@@ -1,7 +1,7 @@
 """Composition root: wires adapters to services by hand."""
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from booking.adapters.api import create_app
 from booking.adapters.postgres import PostgresUnitOfWork
@@ -9,7 +9,7 @@ from booking.adapters.postgres import PostgresUnitOfWork
 
 class SystemClock:
     def now(self) -> datetime:
-        raise NotImplementedError
+        return datetime.now(UTC)
 
 
 def unit_of_work() -> PostgresUnitOfWork:
