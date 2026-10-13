@@ -8,7 +8,7 @@ from alembic.command import downgrade, upgrade
 from alembic.config import Config
 from testcontainers.community.postgres import PostgresContainer
 
-from booking.adapters.memory import FixedClock
+from booking.adapters.memory import FixedClock, InMemoryUnitOfWork
 from booking.adapters.postgres import PostgresUnitOfWork
 from booking.domain.booking import Booking, BookingStatus
 from booking.domain.idempotency import IdempotencyKey
@@ -56,6 +56,12 @@ def user_b() -> UUID:
 @pytest.fixture
 def clock() -> FixedClock:
     return FixedClock(NOW)
+
+
+@pytest.fixture
+def memory_uow() -> InMemoryUnitOfWork:
+    """An in-memory unit of work seeded with the same rooms and users as the migrations."""
+    return InMemoryUnitOfWork(room_ids={ROOM_1, ROOM_2}, user_ids={USER_A, USER_B})
 
 
 @pytest.fixture
