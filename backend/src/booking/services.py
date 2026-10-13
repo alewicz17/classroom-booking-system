@@ -20,7 +20,10 @@ def create_booking(
     room_id: UUID,
     start: datetime,
     end: datetime,
+    idempotency_key: UUID | None = None,
 ) -> Booking:
+    if idempotency_key is not None:
+        raise NotImplementedError
     now = clock.now()
     booking = new_booking(room_id, user_id, start, end, now)
     with uow:

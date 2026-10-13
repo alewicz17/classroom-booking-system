@@ -5,6 +5,7 @@ from typing import Protocol, Self
 from uuid import UUID
 
 from booking.domain.booking import Booking
+from booking.domain.idempotency import IdempotencyKey
 
 
 class Clock(Protocol):
@@ -41,6 +42,12 @@ class UserRepository(Protocol):
         ...
 
 
+class IdempotencyKeyRepository(Protocol):
+    def get(self, user_id: UUID, key: UUID) -> IdempotencyKey | None: ...
+
+    def add(self, idempotency_key: IdempotencyKey) -> None: ...
+
+
 class UnitOfWork(Protocol):
     @property
     def bookings(self) -> BookingRepository: ...
@@ -50,6 +57,9 @@ class UnitOfWork(Protocol):
 
     @property
     def users(self) -> UserRepository: ...
+
+    @property
+    def idempotency_keys(self) -> IdempotencyKeyRepository: ...
 
     def __enter__(self) -> Self: ...
 

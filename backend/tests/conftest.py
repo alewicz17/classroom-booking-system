@@ -11,6 +11,7 @@ from testcontainers.community.postgres import PostgresContainer
 from booking.adapters.memory import FixedClock
 from booking.adapters.postgres import PostgresUnitOfWork
 from booking.domain.booking import Booking, BookingStatus
+from booking.domain.idempotency import IdempotencyKey
 
 LAYERS = {"unit", "contract", "integration", "concurrency", "property", "e2e"}
 BACKEND_DIR = Path(__file__).parent.parent
@@ -125,5 +126,16 @@ def confirmed_bookings(database_url: str) -> Callable[[UUID], list[Booking]]:
             return uow.bookings.find_overlapping(
                 room_id, NOW - timedelta(days=365), NOW + timedelta(days=365)
             )
+
+    return find
+
+
+@pytest.fixture
+def stored_key(database_url: str) -> Callable[[UUID, UUID], IdempotencyKey | None]:
+    """Returns a function reading the stored idempotency key of a user, if any."""
+
+    def find(user_id: UUID, key: UUID) -> IdempotencyKey | None:
+        with PostgresUnitOfWork(database_url) as uow:
+            return uow.idempotency_keys.get(user_id, key)
 
     return find

@@ -7,6 +7,7 @@ from psycopg import errors
 
 from booking.domain.booking import Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
+from booking.domain.idempotency import IdempotencyKey
 
 BOOKING_COLUMNS = "id, room_id, user_id, lower(period), upper(period), status"
 
@@ -113,10 +114,22 @@ class PostgresUserRepository:
         self.connection.execute("SELECT id FROM users WHERE id = %s FOR UPDATE", (user_id,))
 
 
+class PostgresIdempotencyKeyRepository:
+    def __init__(self, connection: psycopg.Connection[Any]) -> None:
+        self.connection = connection
+
+    def get(self, user_id: UUID, key: UUID) -> IdempotencyKey | None:
+        raise NotImplementedError
+
+    def add(self, idempotency_key: IdempotencyKey) -> None:
+        raise NotImplementedError
+
+
 class PostgresUnitOfWork:
     bookings: PostgresBookingRepository
     rooms: PostgresRoomRepository
     users: PostgresUserRepository
+    idempotency_keys: PostgresIdempotencyKeyRepository
 
     def __init__(self, conninfo: str) -> None:
         self.conninfo = conninfo
@@ -126,6 +139,7 @@ class PostgresUnitOfWork:
         self.bookings = PostgresBookingRepository(self.connection)
         self.rooms = PostgresRoomRepository(self.connection)
         self.users = PostgresUserRepository(self.connection)
+        self.idempotency_keys = PostgresIdempotencyKeyRepository(self.connection)
         return self
 
     def __exit__(self, *args: object) -> None:
