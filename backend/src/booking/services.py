@@ -35,3 +35,7 @@ def get_booking(uow: UnitOfWork, user_id: UUID, booking_id: UUID) -> Booking:
     if booking is None or booking.user_id != user_id:
         raise BookingNotFound
     return booking
+
+
+def cancel_booking(uow: UnitOfWork, clock: Clock, user_id: UUID, booking_id: UUID) -> Booking:
+    raise NotImplementedError
