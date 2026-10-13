@@ -7,9 +7,11 @@ from booking.domain.booking import Booking, cancel, check_booking_limit, new_boo
 from booking.domain.errors import (
     BookingAlreadyCancelled,
     BookingNotFound,
+    IdempotencyKeyMismatch,
     RoomNotFound,
     SlotUnavailable,
 )
+from booking.domain.idempotency import IdempotencyKey, request_hash
 from booking.ports import Clock, UnitOfWork
 
 
@@ -22,21 +24,32 @@ def create_booking(
     end: datetime,
     idempotency_key: UUID | None = None,
 ) -> Booking:
-    if idempotency_key is not None:
-        raise NotImplementedError
     now = clock.now()
-    booking = new_booking(room_id, user_id, start, end, now)
     with uow:
+        if idempotency_key is not None:
+            # Same-key requests wait here, so the lookup sees a key committed meanwhile
+            # (ADR 0007). Replay and mismatch leave the transaction to be rolled back.
+            uow.users.lock(user_id)
+            stored = uow.idempotency_keys.get(user_id, idempotency_key)
+            if stored is not None:
+                if stored.request_hash != request_hash(room_id, start, end):
+                    raise IdempotencyKeyMismatch
+                return stored.response
+        booking = new_booking(room_id, user_id, start, end, now)
         if not uow.rooms.exists(room_id):
             raise RoomNotFound
         # Serializes this user's requests; taken before the insert to keep ADR 0005 valid
-        # (ADR 0006).
+        # (ADR 0006). Already held, and so a no-op, on the keyed path.
         uow.users.lock(user_id)
         check_booking_limit(uow.bookings.count_future(user_id, now))
         # Pre-check for a clear error; the exclusion constraint is the real guarantee.
         if uow.bookings.find_overlapping(room_id, booking.start, booking.end):
             raise SlotUnavailable
         uow.bookings.add(booking)
+        if idempotency_key is not None:
+            uow.idempotency_keys.add(
+                IdempotencyKey(user_id, idempotency_key, request_hash(room_id, start, end), booking)
+            )
         uow.commit()
     return booking
 

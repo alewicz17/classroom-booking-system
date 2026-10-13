@@ -4,6 +4,7 @@ from uuid import UUID
 
 import psycopg
 from psycopg import errors
+from psycopg.types.json import Jsonb
 
 from booking.domain.booking import Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
@@ -21,6 +22,30 @@ def _to_booking(row: tuple[Any, ...]) -> Booking:
         start=start.astimezone(UTC),
         end=end.astimezone(UTC),
         status=BookingStatus(status),
+    )
+
+
+# The stored snapshot of a booking in idempotency_keys.response (ADR 0007). Kept apart from
+# the API rendering, so the storage format does not change when the API does.
+def _booking_to_snapshot(booking: Booking) -> dict[str, str]:
+    return {
+        "id": str(booking.id),
+        "room_id": str(booking.room_id),
+        "user_id": str(booking.user_id),
+        "start": booking.start.astimezone(UTC).isoformat(),
+        "end": booking.end.astimezone(UTC).isoformat(),
+        "status": booking.status.value,
+    }
+
+
+def _snapshot_to_booking(snapshot: dict[str, str]) -> Booking:
+    return Booking(
+        id=UUID(snapshot["id"]),
+        room_id=UUID(snapshot["room_id"]),
+        user_id=UUID(snapshot["user_id"]),
+        start=datetime.fromisoformat(snapshot["start"]),
+        end=datetime.fromisoformat(snapshot["end"]),
+        status=BookingStatus(snapshot["status"]),
     )
 
 
@@ -119,10 +144,28 @@ class PostgresIdempotencyKeyRepository:
         self.connection = connection
 
     def get(self, user_id: UUID, key: UUID) -> IdempotencyKey | None:
-        raise NotImplementedError
+        row = self.connection.execute(
+            "SELECT request_hash, response FROM idempotency_keys WHERE user_id = %s AND key = %s",
+            (user_id, key),
+        ).fetchone()
+        if row is None:
+            return None
+        request_hash, response = row
+        return IdempotencyKey(user_id, key, request_hash, _snapshot_to_booking(response))
 
     def add(self, idempotency_key: IdempotencyKey) -> None:
-        raise NotImplementedError
+        self.connection.execute(
+            """
+            INSERT INTO idempotency_keys (user_id, key, request_hash, response)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                idempotency_key.user_id,
+                idempotency_key.key,
+                idempotency_key.request_hash,
+                Jsonb(_booking_to_snapshot(idempotency_key.response)),
+            ),
+        )
 
 
 class PostgresUnitOfWork:

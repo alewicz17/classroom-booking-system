@@ -1,5 +1,6 @@
+import hashlib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from booking.domain.booking import Booking
@@ -17,4 +18,7 @@ class IdempotencyKey:
 
 def request_hash(room_id: UUID, start: datetime, end: datetime) -> str:
     """Hash of the payload with start and end converted to UTC (spec 004, rule 7)."""
-    raise NotImplementedError
+    start_utc = start.astimezone(UTC).isoformat()
+    end_utc = end.astimezone(UTC).isoformat()
+    normalized = f"{room_id}|{start_utc}|{end_utc}"
+    return hashlib.sha256(normalized.encode()).hexdigest()

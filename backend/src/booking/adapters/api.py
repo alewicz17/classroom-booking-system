@@ -17,6 +17,7 @@ from booking.domain.errors import (
     BookingNotFound,
     BookingTooLong,
     CancellationTooLate,
+    IdempotencyKeyMismatch,
     InvalidTimeRange,
     RoomNotFound,
     SlotUnavailable,
@@ -85,6 +86,12 @@ PROBLEMS: dict[type[Exception], tuple[int, str, str, str]] = {
         "/problems/booking-limit-reached",
         "Booking limit reached",
         "A user can hold at most 3 future bookings.",
+    ),
+    IdempotencyKeyMismatch: (
+        422,
+        "/problems/idempotency-key-mismatch",
+        "Idempotency key mismatch",
+        "The idempotency key was already used with a different request.",
     ),
     CancellationTooLate: (
         422,
@@ -155,10 +162,19 @@ def create_app(uow_factory: Callable[[], UnitOfWork], clock: Clock) -> FastAPI:
 
     @app.post("/bookings", status_code=201)
     def create_booking(
-        request: BookingRequest, user_id: User, response: Response
+        request: BookingRequest,
+        user_id: User,
+        response: Response,
+        idempotency_key: Annotated[UUID | None, Header()] = None,
     ) -> dict[str, str]:
         booking = services.create_booking(
-            uow_factory(), clock, user_id, request.room_id, request.start, request.end
+            uow_factory(),
+            clock,
+            user_id,
+            request.room_id,
+            request.start,
+            request.end,
+            idempotency_key,
         )
         response.headers["Location"] = f"/bookings/{booking.id}"
         return _to_json(booking)
