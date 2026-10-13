@@ -15,6 +15,7 @@ from booking.domain.errors import (
 CANCELLATION_DEADLINE = timedelta(hours=24)
 MAX_DURATION = timedelta(hours=6)
 MAX_FUTURE_BOOKINGS = 3
+REMINDER_LEAD_TIME = timedelta(hours=1)
 
 
 class BookingStatus(StrEnum):

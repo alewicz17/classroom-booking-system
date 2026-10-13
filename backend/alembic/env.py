@@ -7,7 +7,8 @@ from sqlalchemy.pool import NullPool
 from alembic import context
 
 if context.config.config_file_name is not None:
-    fileConfig(context.config.config_file_name)
+    # Migrations also run inside the test process; the default would silence the app loggers.
+    fileConfig(context.config.config_file_name, disable_existing_loggers=False)
 
 # Migrations are plain SQL (op.execute); SQLAlchemy is only Alembic's connection layer.
 # The app uses a plain postgresql:// URL for psycopg, so pick the psycopg 3 driver here.

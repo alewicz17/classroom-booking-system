@@ -77,4 +77,12 @@ def cancel_booking(uow: UnitOfWork, clock: Clock, user_id: UUID, booking_id: UUI
 
 
 def send_reminders(uow: UnitOfWork, clock: Clock, notifier: Notifier) -> int:
-    raise NotImplementedError
+    now = clock.now()
+    with uow:
+        due = uow.bookings.find_due_for_reminder(now)
+        for booking in due:
+            notifier.send_reminder(booking)
+            uow.bookings.mark_reminder_sent(booking.id, now)
+        # A notifier failure skips the commit, so the whole pass is rolled back (spec 005).
+        uow.commit()
+    return len(due)
