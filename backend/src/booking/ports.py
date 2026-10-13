@@ -29,6 +29,19 @@ class BookingRepository(Protocol):
         """Confirmed bookings of the user that start strictly after now."""
         ...
 
+    def find_due_for_reminder(self, now: datetime) -> list[Booking]:
+        """Confirmed, not yet reminded bookings with now < start <= now + the lead time.
+
+        Locks them with FOR UPDATE SKIP LOCKED until the end of the transaction.
+        """
+        ...
+
+    def mark_reminder_sent(self, booking_id: UUID, sent_at: datetime) -> None: ...
+
+
+class Notifier(Protocol):
+    def send_reminder(self, booking: Booking) -> None: ...
+
 
 class RoomRepository(Protocol):
     def exists(self, room_id: UUID) -> bool: ...

@@ -25,6 +25,18 @@ services:
       db:
         condition: service_healthy
 
+  # Runs one reminder pass per minute (spec 005). A failed pass is logged and the loop goes on.
+  reminders:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://booking:booking@db:5432/booking
+    command: ["sh", "-c", "while true; do python -m booking.jobs; sleep 60; done"]
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+
   frontend:
     build: ./frontend
     environment:

@@ -266,3 +266,90 @@ def test_committed_changes_are_visible_in_new_unit_of_work(
         cancelled = uow.bookings.get(added.id)
         assert cancelled is not None
         assert cancelled.status == BookingStatus.CANCELLED
+
+
+def stored_reminder_sent_at(uow: UnitOfWork, booking_id: UUID) -> datetime | None:
+    # reminder_sent_at is not on Booking, so each adapter is read where it keeps it.
+    if isinstance(uow, PostgresUnitOfWork):
+        row = uow.connection.execute(
+            "SELECT reminder_sent_at FROM bookings WHERE id = %s", (booking_id,)
+        ).fetchone()
+        assert row is not None
+        sent_at: datetime | None = row[0]
+        return sent_at
+    assert isinstance(uow, InMemoryUnitOfWork)
+    return uow.bookings.reminder_sent_at.get(booking_id)
+
+
+def by_start(bookings: list[Booking]) -> list[Booking]:
+    return sorted(bookings, key=lambda each: each.start)
+
+
+def test_due_bookings_query_follows_rule_1(
+    uow_factory: UowFactory,
+    clock: FixedClock,
+    room_1: UUID,
+    room_2: UUID,
+    user_a: UUID,
+    today_at: At,
+) -> None:
+    quarter = timedelta(minutes=15)
+
+    # 15 minutes long: with the full ranges of AC-01 to AC-05, two rooms are not enough.
+    def short(
+        room_id: UUID, start: datetime, status: BookingStatus = BookingStatus.CONFIRMED
+    ) -> Booking:
+        return booking(room_id, user_a, start, start + quarter, status)
+
+    within_the_hour = short(room_1, today_at(10, 30))
+    at_one_hour = short(room_1, today_at(11))
+    after_the_window = short(room_1, today_at(11, 30))
+    starting_now = short(room_1, today_at(10))
+    started = short(room_1, today_at(9, 30))
+    cancelled = short(room_1, today_at(10, 30), BookingStatus.CANCELLED)
+    already_reminded = short(room_2, today_at(10, 30))
+    store(
+        uow_factory,
+        within_the_hour,
+        at_one_hour,
+        after_the_window,
+        starting_now,
+        started,
+        cancelled,
+        already_reminded,
+    )
+    with uow_factory() as uow:
+        uow.bookings.mark_reminder_sent(already_reminded.id, clock.now() - quarter)
+        uow.commit()
+
+    with uow_factory() as uow:
+        due = uow.bookings.find_due_for_reminder(clock.now())
+
+    assert by_start(due) == [within_the_hour, at_one_hour]
+
+
+def test_booking_marked_as_sent_is_no_longer_due(
+    uow_factory: UowFactory, clock: FixedClock, room_1: UUID, user_a: UUID, today_at: At
+) -> None:
+    added = booking(room_1, user_a, today_at(10, 30), today_at(11, 30))
+    store(uow_factory, added)
+    with uow_factory() as uow:
+        assert uow.bookings.find_due_for_reminder(clock.now()) == [added]
+        uow.bookings.mark_reminder_sent(added.id, clock.now())
+        uow.commit()
+
+    with uow_factory() as uow:
+        assert uow.bookings.find_due_for_reminder(clock.now()) == []
+        assert stored_reminder_sent_at(uow, added.id) == clock.now()
+
+
+def test_rolled_back_mark_is_not_kept(
+    uow_factory: UowFactory, clock: FixedClock, room_1: UUID, user_a: UUID, today_at: At
+) -> None:
+    added = booking(room_1, user_a, today_at(10, 30), today_at(11, 30))
+    store(uow_factory, added)
+    with uow_factory() as uow:
+        uow.bookings.mark_reminder_sent(added.id, clock.now())
+
+    with uow_factory() as uow:
+        assert uow.bookings.find_due_for_reminder(clock.now()) == [added]

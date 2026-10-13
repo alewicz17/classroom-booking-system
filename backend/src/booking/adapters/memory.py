@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Self
 from uuid import UUID
 
-from booking.domain.booking import Booking, BookingStatus
+from booking.domain.booking import REMINDER_LEAD_TIME, Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
 from booking.domain.idempotency import IdempotencyKey
 
@@ -23,6 +23,7 @@ class InMemoryBookingRepository:
         self.room_ids = room_ids
         self.user_ids = user_ids
         self.bookings: dict[UUID, Booking] = {}
+        self.reminder_sent_at: dict[UUID, datetime] = {}
 
     def add(self, booking: Booking) -> None:
         # Stands in for the foreign keys. Services check first, so this only fires on a bug.
@@ -64,6 +65,27 @@ class InMemoryBookingRepository:
             and booking.status == BookingStatus.CONFIRMED
             and booking.start > now
         )
+
+    def find_due_for_reminder(self, now: datetime) -> list[Booking]:
+        due = [
+            booking
+            for booking in self.bookings.values()
+            if booking.status == BookingStatus.CONFIRMED
+            and booking.id not in self.reminder_sent_at
+            and now < booking.start <= now + REMINDER_LEAD_TIME
+        ]
+        return sorted(due, key=lambda booking: booking.start)
+
+    def mark_reminder_sent(self, booking_id: UUID, sent_at: datetime) -> None:
+        self.reminder_sent_at[booking_id] = sent_at
+
+
+class RecordingNotifier:
+    def __init__(self) -> None:
+        self.received: list[Booking] = []
+
+    def send_reminder(self, booking: Booking) -> None:
+        self.received.append(booking)
 
 
 class InMemoryRoomRepository:
@@ -113,6 +135,7 @@ class InMemoryUnitOfWork:
         self.idempotency_keys = InMemoryIdempotencyKeyRepository(user_ids)
         self.committed_bookings: dict[UUID, Booking] = {}
         self.committed_keys: dict[tuple[UUID, UUID], IdempotencyKey] = {}
+        self.committed_reminders: dict[UUID, datetime] = {}
 
     def __enter__(self) -> Self:
         return self
@@ -121,8 +144,10 @@ class InMemoryUnitOfWork:
         # Restoring the last committed state is the in-memory version of a rollback.
         self.bookings.bookings = dict(self.committed_bookings)
         self.idempotency_keys.keys = dict(self.committed_keys)
+        self.bookings.reminder_sent_at = dict(self.committed_reminders)
 
     def commit(self) -> None:
         # Values are frozen dataclasses, so shallow copies are enough.
         self.committed_bookings = dict(self.bookings.bookings)
         self.committed_keys = dict(self.idempotency_keys.keys)
+        self.committed_reminders = dict(self.bookings.reminder_sent_at)

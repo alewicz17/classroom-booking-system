@@ -6,7 +6,7 @@ import psycopg
 from psycopg import errors
 from psycopg.types.json import Jsonb
 
-from booking.domain.booking import Booking, BookingStatus
+from booking.domain.booking import REMINDER_LEAD_TIME, Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
 from booking.domain.idempotency import IdempotencyKey
 
@@ -116,6 +116,29 @@ class PostgresBookingRepository:
         assert row is not None
         count: int = row[0]
         return count
+
+    def find_due_for_reminder(self, now: datetime) -> list[Booking]:
+        # SKIP LOCKED lets concurrent passes skip each other's rows instead of waiting. A row
+        # unlocked by a pass that committed meanwhile is re-checked against the WHERE, and
+        # reminder_sent_at IS NULL then excludes it, so each booking is reminded once.
+        rows = self.connection.execute(
+            f"""
+            SELECT {BOOKING_COLUMNS} FROM bookings
+            WHERE status = 'confirmed'
+              AND reminder_sent_at IS NULL
+              AND lower(period) > %s
+              AND lower(period) <= %s
+            ORDER BY lower(period)
+            FOR UPDATE SKIP LOCKED
+            """,
+            (now, now + REMINDER_LEAD_TIME),
+        ).fetchall()
+        return [_to_booking(row) for row in rows]
+
+    def mark_reminder_sent(self, booking_id: UUID, sent_at: datetime) -> None:
+        self.connection.execute(
+            "UPDATE bookings SET reminder_sent_at = %s WHERE id = %s", (sent_at, booking_id)
+        )
 
 
 class PostgresRoomRepository:
