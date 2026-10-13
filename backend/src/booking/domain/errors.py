@@ -16,3 +16,11 @@ class RoomNotFound(Exception):
 
 class BookingNotFound(Exception):
     """No booking with the requested id is visible to the user."""
+
+
+class BookingAlreadyCancelled(Exception):
+    """The booking is already cancelled."""
+
+
+class CancellationTooLate(Exception):
+    """Now is not strictly before the booking's cancellation deadline."""

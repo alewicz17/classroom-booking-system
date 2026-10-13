@@ -74,15 +74,26 @@ def postgres_url() -> Iterator[str]:
         yield postgres.get_connection_url()
 
 
+def reset_database() -> None:
+    """Recreates the schema and seed data from the migrations, using DATABASE_URL."""
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+    downgrade(config, "base")
+    upgrade(config, "head")
+
+
 @pytest.fixture
 def database_url(postgres_url: str, monkeypatch: pytest.MonkeyPatch) -> str:
     monkeypatch.setenv("DATABASE_URL", postgres_url)
-    config = Config(str(BACKEND_DIR / "alembic.ini"))
-    config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
     # Every test starts from exactly the schema and seed data the migrations define.
-    downgrade(config, "base")
-    upgrade(config, "head")
+    reset_database()
     return postgres_url
+
+
+@pytest.fixture
+def fresh_database(database_url: str) -> Callable[[], None]:
+    """Returns a function that resets the database, for tests that need it more than once."""
+    return reset_database
 
 
 @pytest.fixture
