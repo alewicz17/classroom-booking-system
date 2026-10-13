@@ -167,7 +167,8 @@ The clock is fixed at 2026-10-20T10:00Z unless stated otherwise. "Future" times 
 - **Then** the response is `201` with the original body, not `422`
 
 **AC-07: A replay returns the stored response even after a cancellation**
-- **Given** user A has booked room 1 with key K, and has then cancelled that booking
+- **Given** user A has booked room 1 from 08:00Z to 09:00Z on 2026-10-22 with key K, and
+  has then cancelled that booking
 - **When** user A sends the same request again with key K
 - **Then** the response is `201` with the original body, with `status` `confirmed`, and
   no new booking is created
@@ -175,7 +176,7 @@ The clock is fixed at 2026-10-20T10:00Z unless stated otherwise. "Future" times 
 ### What is stored
 
 **AC-08: A failed request does not store the key**
-- **Given** room 1 has a confirmed booking of user B from 08:00Z to 09:00Z
+- **Given** room 1 has a confirmed booking of user B from 08:00Z to 09:00Z on 2026-10-22
 - **And** user A books room 1 from 08:00Z to 09:00Z with key K and gets `409`
 - **And** user B cancels their booking
 - **When** user A sends the same request again with key K
