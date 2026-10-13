@@ -32,3 +32,7 @@ class BookingTooLong(Exception):
 
 class BookingLimitReached(Exception):
     """The user already holds the maximum number of future bookings."""
+
+
+class IdempotencyKeyMismatch(Exception):
+    """The idempotency key was already used by the user with a different payload."""
