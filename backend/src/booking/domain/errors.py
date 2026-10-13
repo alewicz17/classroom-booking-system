@@ -24,3 +24,11 @@ class BookingAlreadyCancelled(Exception):
 
 class CancellationTooLate(Exception):
     """Now is not strictly before the booking's cancellation deadline."""
+
+
+class BookingTooLong(Exception):
+    """The booking lasts longer than the maximum duration."""
+
+
+class BookingLimitReached(Exception):
+    """The user already holds the maximum number of future bookings."""
