@@ -35,9 +35,10 @@ gets the lock, its count includes the booking the first request just committed.
 Requests from different users lock different rows and never wait for each other.
 
 The rule itself lives in the domain: the service reads the count through the
-repository port and the domain decides whether the limit is reached. In the in-memory
-adapter the lock is a no-op, because unit tests are single-threaded. The guarantee
-under concurrency comes from PostgreSQL, as in ADR 0004.
+repository port and the domain decides whether the limit is reached. An in-memory
+repository, if one is added for unit tests, can implement the lock as a no-op, because
+unit tests are single-threaded. The guarantee under concurrency comes from PostgreSQL,
+as in ADR 0004.
 
 Cancellation does not take the lock. A cancellation only lowers the count, so a
 concurrent one can at worst make a request see a count that is too high and be
