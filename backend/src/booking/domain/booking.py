@@ -6,11 +6,15 @@ from uuid import UUID, uuid4
 from booking.domain.errors import (
     BookingAlreadyCancelled,
     BookingInPast,
+    BookingLimitReached,
+    BookingTooLong,
     CancellationTooLate,
     InvalidTimeRange,
 )
 
 CANCELLATION_DEADLINE = timedelta(hours=24)
+MAX_DURATION = timedelta(hours=6)
+MAX_FUTURE_BOOKINGS = 3
 
 
 class BookingStatus(StrEnum):
@@ -36,6 +40,8 @@ def new_booking(
         raise InvalidTimeRange
     if start <= now:
         raise BookingInPast
+    if end - start > MAX_DURATION:
+        raise BookingTooLong
     return Booking(
         id=uuid4(),
         room_id=room_id,
@@ -44,6 +50,12 @@ def new_booking(
         end=end.astimezone(UTC),
         status=BookingStatus.CONFIRMED,
     )
+
+
+def check_booking_limit(future_bookings: int) -> None:
+    """Rejects a new booking if the user already holds the maximum of future bookings."""
+    if future_bookings >= MAX_FUTURE_BOOKINGS:
+        raise BookingLimitReached
 
 
 def cancel(booking: Booking, now: datetime) -> Booking:

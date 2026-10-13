@@ -24,6 +24,10 @@ class BookingRepository(Protocol):
         """Confirmed bookings in the room whose range overlaps [start, end)."""
         ...
 
+    def count_future(self, user_id: UUID, now: datetime) -> int:
+        """Confirmed bookings of the user that start strictly after now."""
+        ...
+
 
 class RoomRepository(Protocol):
     def exists(self, room_id: UUID) -> bool: ...
@@ -31,6 +35,10 @@ class RoomRepository(Protocol):
 
 class UserRepository(Protocol):
     def exists(self, user_id: UUID) -> bool: ...
+
+    def lock(self, user_id: UUID) -> None:
+        """Locks the user until the end of the transaction."""
+        ...
 
 
 class UnitOfWork(Protocol):

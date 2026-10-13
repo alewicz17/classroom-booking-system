@@ -21,6 +21,7 @@ from booking.adapters.postgres import PostgresUnitOfWork
 from booking.domain.errors import (
     BookingAlreadyCancelled,
     BookingInPast,
+    BookingLimitReached,
     BookingNotFound,
     CancellationTooLate,
     SlotUnavailable,
@@ -67,7 +68,7 @@ class CreateAndCancel(RuleBasedStateMachine):
                 begin,
                 begin + duration * SLOT,
             )
-        except (SlotUnavailable, BookingInPast):
+        except (SlotUnavailable, BookingInPast, BookingLimitReached):
             return multiple()
         return booking.id
 

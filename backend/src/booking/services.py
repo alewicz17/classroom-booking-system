@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from booking.domain.booking import Booking, cancel, new_booking
+from booking.domain.booking import Booking, cancel, check_booking_limit, new_booking
 from booking.domain.errors import (
     BookingAlreadyCancelled,
     BookingNotFound,
@@ -21,10 +21,15 @@ def create_booking(
     start: datetime,
     end: datetime,
 ) -> Booking:
-    booking = new_booking(room_id, user_id, start, end, clock.now())
+    now = clock.now()
+    booking = new_booking(room_id, user_id, start, end, now)
     with uow:
         if not uow.rooms.exists(room_id):
             raise RoomNotFound
+        # Serializes this user's requests; taken before the insert to keep ADR 0005 valid
+        # (ADR 0006).
+        uow.users.lock(user_id)
+        check_booking_limit(uow.bookings.count_future(user_id, now))
         # Pre-check for a clear error; the exclusion constraint is the real guarantee.
         if uow.bookings.find_overlapping(room_id, booking.start, booking.end):
             raise SlotUnavailable

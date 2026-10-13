@@ -13,7 +13,9 @@ from booking.domain.booking import Booking
 from booking.domain.errors import (
     BookingAlreadyCancelled,
     BookingInPast,
+    BookingLimitReached,
     BookingNotFound,
+    BookingTooLong,
     CancellationTooLate,
     InvalidTimeRange,
     RoomNotFound,
@@ -71,6 +73,18 @@ PROBLEMS: dict[type[Exception], tuple[int, str, str, str]] = {
         "/problems/booking-in-past",
         "Booking in the past",
         "The booking must start in the future.",
+    ),
+    BookingTooLong: (
+        422,
+        "/problems/booking-too-long",
+        "Booking too long",
+        "A booking can last at most 6 hours.",
+    ),
+    BookingLimitReached: (
+        422,
+        "/problems/booking-limit-reached",
+        "Booking limit reached",
+        "A user can hold at most 3 future bookings.",
     ),
     CancellationTooLate: (
         422,

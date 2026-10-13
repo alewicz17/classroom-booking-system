@@ -46,8 +46,9 @@ class PostgresBookingRepository:
         except errors.ExclusionViolation as error:
             raise SlotUnavailable from error
         except errors.DeadlockDetected as error:
-            # This insert is the transaction's only write, so a deadlock here can only come
-            # from a concurrent overlapping insert on the exclusion constraint (ADR 0005).
+            # The only lock taken before this insert is the user lock, and a transaction
+            # waiting on it has inserted nothing, so a deadlock here can only come from a
+            # concurrent overlapping insert on the exclusion constraint (ADR 0005, 0006).
             raise SlotUnavailable from error
 
     def get(self, booking_id: UUID) -> Booking | None:
@@ -78,6 +79,18 @@ class PostgresBookingRepository:
         ).fetchall()
         return [_to_booking(row) for row in rows]
 
+    def count_future(self, user_id: UUID, now: datetime) -> int:
+        row = self.connection.execute(
+            """
+            SELECT count(*) FROM bookings
+            WHERE user_id = %s AND status = 'confirmed' AND lower(period) > %s
+            """,
+            (user_id, now),
+        ).fetchone()
+        assert row is not None
+        count: int = row[0]
+        return count
+
 
 class PostgresRoomRepository:
     def __init__(self, connection: psycopg.Connection[Any]) -> None:
@@ -95,6 +108,9 @@ class PostgresUserRepository:
     def exists(self, user_id: UUID) -> bool:
         row = self.connection.execute("SELECT 1 FROM users WHERE id = %s", (user_id,)).fetchone()
         return row is not None
+
+    def lock(self, user_id: UUID) -> None:
+        self.connection.execute("SELECT id FROM users WHERE id = %s FOR UPDATE", (user_id,))
 
 
 class PostgresUnitOfWork:
