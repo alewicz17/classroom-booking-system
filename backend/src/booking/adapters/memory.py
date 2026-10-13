@@ -23,6 +23,7 @@ class InMemoryBookingRepository:
         self.room_ids = room_ids
         self.user_ids = user_ids
         self.bookings: dict[UUID, Booking] = {}
+        self.reminder_sent_at: dict[UUID, datetime] = {}
 
     def add(self, booking: Booking) -> None:
         # Stands in for the foreign keys. Services check first, so this only fires on a bug.
@@ -64,6 +65,20 @@ class InMemoryBookingRepository:
             and booking.status == BookingStatus.CONFIRMED
             and booking.start > now
         )
+
+    def find_due_for_reminder(self, now: datetime) -> list[Booking]:
+        raise NotImplementedError
+
+    def mark_reminder_sent(self, booking_id: UUID, sent_at: datetime) -> None:
+        raise NotImplementedError
+
+
+class RecordingNotifier:
+    def __init__(self) -> None:
+        self.received: list[Booking] = []
+
+    def send_reminder(self, booking: Booking) -> None:
+        raise NotImplementedError
 
 
 class InMemoryRoomRepository:

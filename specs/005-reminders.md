@@ -186,8 +186,10 @@ the repository, so the rules of specs 001 and 003 do not get in the way.
 ### Repository contract (in-memory and Postgres)
 
 **AC-10: The due-bookings query follows rule 1**
-- **Given** the bookings of AC-01 to AC-05 and a booking from 10:30Z to 11:30Z whose
-  `reminder_sent_at` is already set
+- **Given** bookings with the start times and statuses of AC-01 to AC-05 and a booking
+  starting at 10:30Z whose `reminder_sent_at` is already set, each 15 minutes long and
+  spread over rooms 1 and 2 (with the full ranges of AC-01 to AC-05, three confirmed
+  bookings would overlap at 10:45Z, and there are only two rooms)
 - **When** the due bookings are requested for now = 10:00Z
 - **Then** exactly the bookings starting at 10:30Z (not yet reminded) and at 11:00Z are
   returned

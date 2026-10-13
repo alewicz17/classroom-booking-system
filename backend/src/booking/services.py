@@ -12,7 +12,7 @@ from booking.domain.errors import (
     SlotUnavailable,
 )
 from booking.domain.idempotency import IdempotencyKey, request_hash
-from booking.ports import Clock, UnitOfWork
+from booking.ports import Clock, Notifier, UnitOfWork
 
 
 def create_booking(
@@ -74,3 +74,7 @@ def cancel_booking(uow: UnitOfWork, clock: Clock, user_id: UUID, booking_id: UUI
             raise BookingAlreadyCancelled
         uow.commit()
     return cancelled
+
+
+def send_reminders(uow: UnitOfWork, clock: Clock, notifier: Notifier) -> int:
+    raise NotImplementedError

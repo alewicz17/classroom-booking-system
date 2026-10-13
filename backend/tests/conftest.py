@@ -75,6 +75,16 @@ def at() -> Callable[..., datetime]:
     return at
 
 
+@pytest.fixture
+def today_at() -> Callable[..., datetime]:
+    """Returns a function giving a UTC time on the day of NOW."""
+
+    def at(hour: int, minute: int = 0) -> datetime:
+        return NOW.replace(hour=hour, minute=minute)
+
+    return at
+
+
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
     with PostgresContainer("postgres:16", driver=None) as postgres:
@@ -132,6 +142,22 @@ def confirmed_bookings(database_url: str) -> Callable[[UUID], list[Booking]]:
             return uow.bookings.find_overlapping(
                 room_id, NOW - timedelta(days=365), NOW + timedelta(days=365)
             )
+
+    return find
+
+
+@pytest.fixture
+def stored_reminder_sent_at(database_url: str) -> Callable[[UUID], datetime | None]:
+    """Returns a function reading bookings.reminder_sent_at, which no port exposes."""
+
+    def find(booking_id: UUID) -> datetime | None:
+        with PostgresUnitOfWork(database_url) as uow:
+            row = uow.connection.execute(
+                "SELECT reminder_sent_at FROM bookings WHERE id = %s", (booking_id,)
+            ).fetchone()
+        assert row is not None
+        sent_at: datetime | None = row[0]
+        return sent_at
 
     return find
 

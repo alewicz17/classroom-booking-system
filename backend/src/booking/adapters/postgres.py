@@ -117,6 +117,12 @@ class PostgresBookingRepository:
         count: int = row[0]
         return count
 
+    def find_due_for_reminder(self, now: datetime) -> list[Booking]:
+        raise NotImplementedError
+
+    def mark_reminder_sent(self, booking_id: UUID, sent_at: datetime) -> None:
+        raise NotImplementedError
+
 
 class PostgresRoomRepository:
     def __init__(self, connection: psycopg.Connection[Any]) -> None:
