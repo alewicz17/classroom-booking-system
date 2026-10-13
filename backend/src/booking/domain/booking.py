@@ -1,9 +1,16 @@
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from booking.domain.errors import BookingInPast, InvalidTimeRange
+from booking.domain.errors import (
+    BookingAlreadyCancelled,
+    BookingInPast,
+    CancellationTooLate,
+    InvalidTimeRange,
+)
+
+CANCELLATION_DEADLINE = timedelta(hours=24)
 
 
 class BookingStatus(StrEnum):
@@ -37,3 +44,13 @@ def new_booking(
         end=end.astimezone(UTC),
         status=BookingStatus.CONFIRMED,
     )
+
+
+def cancel(booking: Booking, now: datetime) -> Booking:
+    """Returns the booking as cancelled, if it is confirmed and not past the deadline."""
+    # Checked before the deadline, so a cancelled booking always gives the same error.
+    if booking.status == BookingStatus.CANCELLED:
+        raise BookingAlreadyCancelled
+    if now >= booking.start - CANCELLATION_DEADLINE:
+        raise CancellationTooLate
+    return replace(booking, status=BookingStatus.CANCELLED)

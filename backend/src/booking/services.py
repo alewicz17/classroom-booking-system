@@ -3,8 +3,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from booking.domain.booking import Booking, new_booking
-from booking.domain.errors import BookingNotFound, RoomNotFound, SlotUnavailable
+from booking.domain.booking import Booking, cancel, new_booking
+from booking.domain.errors import (
+    BookingAlreadyCancelled,
+    BookingNotFound,
+    RoomNotFound,
+    SlotUnavailable,
+)
 from booking.ports import Clock, UnitOfWork
 
 
@@ -38,4 +43,13 @@ def get_booking(uow: UnitOfWork, user_id: UUID, booking_id: UUID) -> Booking:
 
 
 def cancel_booking(uow: UnitOfWork, clock: Clock, user_id: UUID, booking_id: UUID) -> Booking:
-    raise NotImplementedError
+    with uow:
+        booking = uow.bookings.get(booking_id)
+        if booking is None or booking.user_id != user_id:
+            raise BookingNotFound
+        cancelled = cancel(booking, clock.now())
+        # The read above may be stale: a concurrent request may have cancelled it since.
+        if not uow.bookings.cancel(booking_id):
+            raise BookingAlreadyCancelled
+        uow.commit()
+    return cancelled

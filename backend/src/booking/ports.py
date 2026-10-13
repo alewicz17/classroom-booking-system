@@ -16,6 +16,10 @@ class BookingRepository(Protocol):
 
     def get(self, booking_id: UUID) -> Booking | None: ...
 
+    def cancel(self, booking_id: UUID) -> bool:
+        """Marks a confirmed booking as cancelled. False if no confirmed booking matched."""
+        ...
+
     def find_overlapping(self, room_id: UUID, start: datetime, end: datetime) -> list[Booking]:
         """Confirmed bookings in the room whose range overlaps [start, end)."""
         ...

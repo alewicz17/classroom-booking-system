@@ -56,6 +56,15 @@ class PostgresBookingRepository:
         ).fetchone()
         return None if row is None else _to_booking(row)
 
+    def cancel(self, booking_id: UUID) -> bool:
+        # A single conditional update: a concurrent cancel waits on the row lock, then
+        # re-checks the WHERE against the committed row and matches nothing.
+        cursor = self.connection.execute(
+            "UPDATE bookings SET status = 'cancelled' WHERE id = %s AND status = 'confirmed'",
+            (booking_id,),
+        )
+        return cursor.rowcount == 1
+
     def find_overlapping(self, room_id: UUID, start: datetime, end: datetime) -> list[Booking]:
         rows = self.connection.execute(
             f"""

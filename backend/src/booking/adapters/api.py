@@ -11,8 +11,10 @@ from pydantic import AwareDatetime, BaseModel
 from booking import services
 from booking.domain.booking import Booking
 from booking.domain.errors import (
+    BookingAlreadyCancelled,
     BookingInPast,
     BookingNotFound,
+    CancellationTooLate,
     InvalidTimeRange,
     RoomNotFound,
     SlotUnavailable,
@@ -52,6 +54,12 @@ PROBLEMS: dict[type[Exception], tuple[int, str, str, str]] = {
         "Slot unavailable",
         "The room already has a confirmed booking that overlaps the requested range.",
     ),
+    BookingAlreadyCancelled: (
+        409,
+        "/problems/booking-already-cancelled",
+        "Booking already cancelled",
+        "The booking is already cancelled.",
+    ),
     InvalidTimeRange: (
         422,
         "/problems/invalid-time-range",
@@ -63,6 +71,12 @@ PROBLEMS: dict[type[Exception], tuple[int, str, str, str]] = {
         "/problems/booking-in-past",
         "Booking in the past",
         "The booking must start in the future.",
+    ),
+    CancellationTooLate: (
+        422,
+        "/problems/cancellation-too-late",
+        "Cancellation too late",
+        "A booking can be cancelled only until 24 hours before it starts.",
     ),
 }
 
@@ -138,5 +152,9 @@ def create_app(uow_factory: Callable[[], UnitOfWork], clock: Clock) -> FastAPI:
     @app.get("/bookings/{booking_id}")
     def get_booking(booking_id: UUID, user_id: User) -> dict[str, str]:
         return _to_json(services.get_booking(uow_factory(), user_id, booking_id))
+
+    @app.post("/bookings/{booking_id}/cancel")
+    def cancel_booking(booking_id: UUID, user_id: User) -> dict[str, str]:
+        return _to_json(services.cancel_booking(uow_factory(), clock, user_id, booking_id))
 
     return app
