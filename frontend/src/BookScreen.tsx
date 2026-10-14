@@ -49,41 +49,47 @@ export default function BookScreen({ userId, rooms }: Props) {
   return (
     <form onSubmit={submit}>
       <h2>Book a room</h2>
-      <p>
-        <label htmlFor="room">Room</label>{" "}
-        <select id="room" value={roomId} onChange={(e) => change(setRoomId, e.target.value)}>
-          {rooms.map((room) => (
-            <option key={room.id} value={room.id}>
-              {room.name}
-            </option>
-          ))}
-        </select>
-      </p>
-      <p>
-        <label htmlFor="start">Start (UTC)</label>{" "}
-        <input
-          id="start"
-          type="datetime-local"
-          required
-          value={start}
-          onChange={(e) => change(setStart, e.target.value)}
-        />
-      </p>
-      <p>
-        <label htmlFor="end">End (UTC)</label>{" "}
-        <input
-          id="end"
-          type="datetime-local"
-          required
-          value={end}
-          onChange={(e) => change(setEnd, e.target.value)}
-        />
-      </p>
-      <button type="submit" disabled={pending}>
+      <div className="booking-form__fields">
+        <div className="field">
+          <label htmlFor="room">Room</label>
+          <select id="room" value={roomId} onChange={(e) => change(setRoomId, e.target.value)}>
+            {rooms.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="start">Start (UTC)</label>
+          <input
+            id="start"
+            type="datetime-local"
+            required
+            value={start}
+            onChange={(e) => change(setStart, e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="end">End (UTC)</label>
+          <input
+            id="end"
+            type="datetime-local"
+            required
+            value={end}
+            onChange={(e) => change(setEnd, e.target.value)}
+          />
+        </div>
+      </div>
+      <button type="submit" className="button" disabled={pending}>
         Book
       </button>
-      {confirmation && <p>{confirmation}</p>}
-      {error && <p role="alert">{error}</p>}
+      {confirmation && <p className="message message--success">{confirmation}</p>}
+      {error && (
+        <p role="alert" className="message message--error">
+          {error}
+        </p>
+      )}
     </form>
   );
 }

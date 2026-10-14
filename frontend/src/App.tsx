@@ -26,21 +26,45 @@ export default function App() {
 
   return (
     <>
-      <header>
-        <h1>Classroom Booking</h1>
-        <label htmlFor="acting-as">Acting as</label>{" "}
-        <select id="acting-as" value={userId} onChange={(e) => setUserId(e.target.value)}>
-          {USERS.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name}
-            </option>
-          ))}
-        </select>{" "}
-        <button onClick={() => setScreen("book")}>Book</button>{" "}
-        <button onClick={() => setScreen("my-bookings")}>My bookings</button>
+      <header className="site-header">
+        <div className="site-header__inner">
+          <div className="site-header__top">
+            <h1>Classroom Booking</h1>
+            <div className="acting-as">
+              <label htmlFor="acting-as">Acting as</label>
+              <select id="acting-as" value={userId} onChange={(e) => setUserId(e.target.value)}>
+                {USERS.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <nav className="tabs">
+            <button
+              className="tab"
+              aria-current={screen === "book" ? "page" : undefined}
+              onClick={() => setScreen("book")}
+            >
+              Book
+            </button>
+            <button
+              className="tab"
+              aria-current={screen === "my-bookings" ? "page" : undefined}
+              onClick={() => setScreen("my-bookings")}
+            >
+              My bookings
+            </button>
+          </nav>
+        </div>
       </header>
-      <main>
-        {error && <p role="alert">{error}</p>}
+      <main className="page">
+        {error && (
+          <p role="alert" className="message message--error">
+            {error}
+          </p>
+        )}
         {/* Keyed by user, so changing user remounts the screen: data reloads, messages clear. */}
         {rooms &&
           (screen === "book" ? (

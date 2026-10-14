@@ -38,40 +38,49 @@ export default function MyBookingsScreen({ userId, rooms }: Props) {
   return (
     <section>
       <h2>My bookings</h2>
-      {error && <p role="alert">{error}</p>}
-      {bookings?.length === 0 && <p>No bookings yet.</p>}
+      {error && (
+        <p role="alert" className="message message--error">
+          {error}
+        </p>
+      )}
+      {bookings?.length === 0 && <p className="empty">No bookings yet.</p>}
       {bookings && bookings.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Room</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.map((booking) => (
-              <tr key={booking.id}>
-                <td>{roomName(booking.room_id)}</td>
-                <td>{formatUtc(booking.start)}</td>
-                <td>{formatUtc(booking.end)}</td>
-                <td>{booking.status}</td>
-                <td>
-                  {booking.status === "confirmed" && (
-                    <button
-                      disabled={cancelling === booking.id}
-                      onClick={() => cancel(booking.id)}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </td>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {bookings.map((booking) => (
+                <tr key={booking.id} className={`row--${booking.status}`}>
+                  <td>{roomName(booking.room_id)}</td>
+                  <td>{formatUtc(booking.start)}</td>
+                  <td>{formatUtc(booking.end)}</td>
+                  <td>
+                    <span className={`status status--${booking.status}`}>{booking.status}</span>
+                  </td>
+                  <td>
+                    {booking.status === "confirmed" && (
+                      <button
+                        className="button button--quiet"
+                        disabled={cancelling === booking.id}
+                        onClick={() => cancel(booking.id)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );
