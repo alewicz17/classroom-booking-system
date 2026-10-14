@@ -6,6 +6,7 @@ from uuid import UUID
 
 from booking.domain.booking import Booking
 from booking.domain.idempotency import IdempotencyKey
+from booking.domain.room import Room
 
 
 class Clock(Protocol):
@@ -16,6 +17,10 @@ class BookingRepository(Protocol):
     def add(self, booking: Booking) -> None: ...
 
     def get(self, booking_id: UUID) -> Booking | None: ...
+
+    def list_for_user(self, user_id: UUID) -> list[Booking]:
+        """Every booking of the user, of any status, sorted by start and then by id."""
+        ...
 
     def cancel(self, booking_id: UUID) -> bool:
         """Marks a confirmed booking as cancelled. False if no confirmed booking matched."""
@@ -45,6 +50,10 @@ class Notifier(Protocol):
 
 class RoomRepository(Protocol):
     def exists(self, room_id: UUID) -> bool: ...
+
+    def list_all(self) -> list[Room]:
+        """Every room, sorted by name."""
+        ...
 
 
 class UserRepository(Protocol):

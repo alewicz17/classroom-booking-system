@@ -21,4 +21,7 @@ uv run pytest -m unit      # fast tests, no Docker
 uv run pytest              # all tests (needs Docker)
 ```
 
+The E2E tests (`-m e2e`) also need Node: run `npm ci` in `frontend/` and
+`uv run playwright install chromium` once.
+
 See `CLAUDE.md` for the full list of commands, conventions and architecture.

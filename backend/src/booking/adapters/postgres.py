@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 from booking.domain.booking import REMINDER_LEAD_TIME, Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
 from booking.domain.idempotency import IdempotencyKey
+from booking.domain.room import Room
 
 BOOKING_COLUMNS = "id, room_id, user_id, lower(period), upper(period), status"
 
@@ -83,6 +84,13 @@ class PostgresBookingRepository:
         ).fetchone()
         return None if row is None else _to_booking(row)
 
+    def list_for_user(self, user_id: UUID) -> list[Booking]:
+        rows = self.connection.execute(
+            f"SELECT {BOOKING_COLUMNS} FROM bookings WHERE user_id = %s ORDER BY lower(period), id",
+            (user_id,),
+        ).fetchall()
+        return [_to_booking(row) for row in rows]
+
     def cancel(self, booking_id: UUID) -> bool:
         # A single conditional update: a concurrent cancel waits on the row lock, then
         # re-checks the WHERE against the committed row and matches nothing.
@@ -148,6 +156,10 @@ class PostgresRoomRepository:
     def exists(self, room_id: UUID) -> bool:
         row = self.connection.execute("SELECT 1 FROM rooms WHERE id = %s", (room_id,)).fetchone()
         return row is not None
+
+    def list_all(self) -> list[Room]:
+        rows = self.connection.execute("SELECT id, name FROM rooms ORDER BY name, id").fetchall()
+        return [Room(id=id_, name=name) for id_, name in rows]
 
 
 class PostgresUserRepository:

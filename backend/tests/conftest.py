@@ -61,7 +61,7 @@ def clock() -> FixedClock:
 @pytest.fixture
 def memory_uow() -> InMemoryUnitOfWork:
     """An in-memory unit of work seeded with the same rooms and users as the migrations."""
-    return InMemoryUnitOfWork(room_ids={ROOM_1, ROOM_2}, user_ids={USER_A, USER_B})
+    return InMemoryUnitOfWork(rooms={ROOM_1: "Room 1", ROOM_2: "Room 2"}, user_ids={USER_A, USER_B})
 
 
 @pytest.fixture
