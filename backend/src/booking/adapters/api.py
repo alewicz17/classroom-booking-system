@@ -160,6 +160,15 @@ def create_app(uow_factory: Callable[[], UnitOfWork], clock: Clock) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/rooms")
+    def list_rooms(user_id: User) -> list[dict[str, str]]:
+        rooms = services.list_rooms(uow_factory())
+        return [{"id": str(room.id), "name": room.name} for room in rooms]
+
+    @app.get("/bookings")
+    def list_bookings(user_id: User) -> list[dict[str, str]]:
+        return [_to_json(booking) for booking in services.list_bookings(uow_factory(), user_id)]
+
     @app.post("/bookings", status_code=201)
     def create_booking(
         request: BookingRequest,

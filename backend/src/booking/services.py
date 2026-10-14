@@ -12,6 +12,7 @@ from booking.domain.errors import (
     SlotUnavailable,
 )
 from booking.domain.idempotency import IdempotencyKey, request_hash
+from booking.domain.room import Room
 from booking.ports import Clock, Notifier, UnitOfWork
 
 
@@ -61,6 +62,16 @@ def get_booking(uow: UnitOfWork, user_id: UUID, booking_id: UUID) -> Booking:
     if booking is None or booking.user_id != user_id:
         raise BookingNotFound
     return booking
+
+
+def list_bookings(uow: UnitOfWork, user_id: UUID) -> list[Booking]:
+    with uow:
+        return uow.bookings.list_for_user(user_id)
+
+
+def list_rooms(uow: UnitOfWork) -> list[Room]:
+    with uow:
+        return uow.rooms.list_all()
 
 
 def cancel_booking(uow: UnitOfWork, clock: Clock, user_id: UUID, booking_id: UUID) -> Booking:

@@ -8,6 +8,7 @@ from uuid import UUID
 from booking.domain.booking import REMINDER_LEAD_TIME, Booking, BookingStatus
 from booking.domain.errors import SlotUnavailable
 from booking.domain.idempotency import IdempotencyKey
+from booking.domain.room import Room
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,10 @@ class InMemoryBookingRepository:
 
     def get(self, booking_id: UUID) -> Booking | None:
         return self.bookings.get(booking_id)
+
+    def list_for_user(self, user_id: UUID) -> list[Booking]:
+        own = [booking for booking in self.bookings.values() if booking.user_id == user_id]
+        return sorted(own, key=lambda booking: (booking.start, booking.id))
 
     def cancel(self, booking_id: UUID) -> bool:
         booking = self.bookings.get(booking_id)
@@ -89,11 +94,15 @@ class RecordingNotifier:
 
 
 class InMemoryRoomRepository:
-    def __init__(self, room_ids: set[UUID]) -> None:
-        self.room_ids = room_ids
+    def __init__(self, rooms: dict[UUID, str]) -> None:
+        self.rooms = rooms
 
     def exists(self, room_id: UUID) -> bool:
-        return room_id in self.room_ids
+        return room_id in self.rooms
+
+    def list_all(self) -> list[Room]:
+        rooms = [Room(id=id_, name=name) for id_, name in self.rooms.items()]
+        return sorted(rooms, key=lambda room: (room.name, room.id))
 
 
 class InMemoryUserRepository:
@@ -128,9 +137,9 @@ class InMemoryIdempotencyKeyRepository:
 class InMemoryUnitOfWork:
     """Keeps its data across uses, like a database. Uncommitted changes are discarded on exit."""
 
-    def __init__(self, room_ids: set[UUID], user_ids: set[UUID]) -> None:
-        self.bookings = InMemoryBookingRepository(room_ids, user_ids)
-        self.rooms = InMemoryRoomRepository(room_ids)
+    def __init__(self, rooms: dict[UUID, str], user_ids: set[UUID]) -> None:
+        self.bookings = InMemoryBookingRepository(set(rooms), user_ids)
+        self.rooms = InMemoryRoomRepository(rooms)
         self.users = InMemoryUserRepository(user_ids)
         self.idempotency_keys = InMemoryIdempotencyKeyRepository(user_ids)
         self.committed_bookings: dict[UUID, Booking] = {}
